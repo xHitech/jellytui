@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jellytui"
+version = "0.1.0"
+description = "Reprodutor de música Jellyfin para terminal, com Textual e mpv"
+requires-python = ">=3.11"
+dependencies = ["textual>=8.2,<9", "httpx>=0.28,<0.29"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10", "pytest-asyncio>=1,<2"]
+
+[project.scripts]
+jellytui = "jellytui.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["jellytui*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
