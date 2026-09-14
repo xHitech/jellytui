@@ -1,0 +1,42 @@
+# Maintainer: Hitech <184116371+xHitech@users.noreply.github.com>
+
+pkgname=jellytui-git
+pkgver=0.1.0.r1.gc9928f7
+pkgrel=1
+pkgdesc="Reprodutor de música Jellyfin para terminal, com Textual e mpv (versão git de desenvolvimento)"
+arch=('any')
+url="https://github.com/xHitech/jellytui"
+license=('MIT')
+depends=(
+    'mpv'
+    'python'
+    'python-httpx'
+    'python-textual'
+)
+makedepends=(
+    'git'
+    'python-build'
+    'python-installer'
+    'python-setuptools'
+    'python-wheel'
+)
+provides=('jellytui')
+conflicts=('jellytui')
+source=("git+https://github.com/xHitech/jellytui.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "${pkgname%-git}"
+    git describe --long --tags 2>/dev/null | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+    cd "${pkgname%-git}"
+    python -m build --wheel --no-isolation
+}
+
+package() {
+    cd "${pkgname%-git}"
+    python -m installer --destdir="$pkgdir" dist/*.whl
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -144,6 +144,16 @@ Não implementados: transcodificação de fallback, download, capas, reproduçã
 
 Referências utilizadas: [OpenAPI oficial do Jellyfin](https://api.jellyfin.org/openapi/jellyfin-openapi-stable.json), a especificação `/api-docs/openapi.json` do próprio servidor e [manual oficial de IPC do mpv](https://mpv.io/manual/stable/#json-ipc).
 
+## Arch Linux
+
+Local build:
+
+```bash
+git clone https://github.com/xHitech/jellytui
+cd jellytui/packaging/arch
+makepkg -si
+```
+
 ## License
 
 MIT License. See LICENSE.
