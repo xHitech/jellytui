@@ -360,15 +360,64 @@ def test_album_artist_metadata_extraction():
     })
     assert item_artists.artist == "Sleep Token"
 
-    # 3. Álbum sem artista
-    item_no_artist = Item.from_api({
+    # 3. Álbum sem artista próprio, resolvido pelo ParentId do MusicArtist pai
+    item_parent_artist = Item.from_api({
         "Id": "a3",
         "Name": "Avenged Sevenfold",
         "Type": "MusicAlbum",
         "AlbumArtist": None,
         "Artists": [],
+        "ParentId": "p_a7x",
+    }, artist_map={"p_a7x": "Avenged Sevenfold"})
+    assert item_parent_artist.artist == "Avenged Sevenfold"
+
+    # 4. Álbum sem artista nem pai MusicArtist
+    item_no_artist = Item.from_api({
+        "Id": "a4",
+        "Name": "Álbum Realmente Sem Artista",
+        "Type": "MusicAlbum",
+        "AlbumArtist": None,
+        "Artists": [],
     })
     assert item_no_artist.artist == ""
+
+
+async def test_batch_parent_artist_resolution():
+    import httpx
+    from urllib.parse import parse_qs, urlsplit
+    from jellytui.config import Config
+    from jellytui.jellyfin import Jellyfin
+
+    class MockTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request):
+            url = str(request.url)
+            query = parse_qs(urlsplit(url).query)
+            if "ids" in query:
+                ids = query["ids"][0].split(",")
+                items = []
+                for i in ids:
+                    if i == "parent_1":
+                        items.append({"Id": "parent_1", "Name": "Avenged Sevenfold", "Type": "MusicArtist"})
+                    elif i == "parent_2":
+                        items.append({"Id": "parent_2", "Name": "Disturbed", "Type": "MusicArtist"})
+                return httpx.Response(200, json={"Items": items, "TotalRecordCount": len(items)})
+            return httpx.Response(200, json={
+                "Items": [
+                    {"Id": "alb1", "Name": "City of Evil", "Type": "MusicAlbum", "ParentId": "parent_1"},
+                    {"Id": "alb2", "Name": "Believe", "Type": "MusicAlbum", "ParentId": "parent_2"},
+                    {"Id": "alb3", "Name": "Sem Pai", "Type": "MusicAlbum", "ParentId": "unknown"},
+                ],
+                "TotalRecordCount": 3
+            })
+
+    cfg = Config("http://mock-server", "uid", "tok", "dev")
+    client = Jellyfin(cfg, transport=MockTransport())
+    albums = await client.browse("Álbuns")
+    assert albums[0].name == "City of Evil" and albums[0].artist == "Avenged Sevenfold"
+    assert albums[1].name == "Believe" and albums[1].artist == "Disturbed"
+    assert albums[2].name == "Sem Pai" and albums[2].artist == ""
+    assert client.parent_artist_cache.get("parent_1") == "Avenged Sevenfold"
+    assert client.parent_artist_cache.get("parent_2") == "Disturbed"
 
 
 async def test_album_without_artist_shows_dash_not_album():

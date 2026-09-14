@@ -41,10 +41,17 @@ class Item:
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_api(cls, data: dict) -> "Item":
+    def from_api(cls, data: dict, artist_map: dict | None = None) -> "Item":
+        artist = _extract_artist(data)
+        if not artist and data.get("Type") == "MusicAlbum":
+            pid = data.get("ParentId")
+            if pid and artist_map and pid in artist_map:
+                artist = artist_map[pid]
+            elif isinstance(data.get("ParentItem"), dict) and data["ParentItem"].get("Type") == "MusicArtist":
+                artist = data["ParentItem"].get("Name", "")
         return cls(
             data["Id"], data.get("Name", "Sem título"), data.get("Type", "Folder"),
-            _extract_artist(data),
+            artist,
             data.get("Album", ""), (data.get("RunTimeTicks") or 0) / 10_000_000,
             data.get("UserData", {}).get("IsFavorite", False), data,
         )

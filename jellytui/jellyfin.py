@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urlencode, urlsplit, urljoin, parse_qs
 import httpx
 from .config import Config
-from .models import Item
+from .models import Item, _extract_artist
 from .lyrics import Lyrics
 
 
@@ -24,6 +24,7 @@ class Jellyfin:
         self.config = config
         self.http = httpx.AsyncClient(timeout=httpx.Timeout(20, connect=8),
                                       transport=transport, trust_env=False)
+        self.parent_artist_cache = {}
 
     @property
     def authorization(self):
@@ -61,19 +62,45 @@ class Jellyfin:
             raise JellyfinError("Resposta de autenticação incompleta.") from None
         return self.config
 
+    async def _resolve_parent_artists(self, raw_items: list[dict]):
+        missing_ids = set()
+        for item in raw_items:
+            if item.get("Type") == "MusicAlbum" and not _extract_artist(item):
+                pid = item.get("ParentId")
+                if pid and pid not in self.parent_artist_cache:
+                    missing_ids.add(pid)
+        if missing_ids:
+            ids_list = list(missing_ids)
+            for i in range(0, len(ids_list), 100):
+                chunk = ids_list[i:i + 100]
+                try:
+                    res = await self.request("GET", "/Items", params={
+                        "userId": self.config.user_id,
+                        "ids": ",".join(chunk),
+                    })
+                    for p in res.get("Items", []):
+                        if p.get("Type") == "MusicArtist":
+                            self.parent_artist_cache[p["Id"]] = p.get("Name", "")
+                except Exception:
+                    pass
+            for mid in missing_ids:
+                if mid not in self.parent_artist_cache:
+                    self.parent_artist_cache[mid] = ""
+
     async def all_items(self, path="/Items", **params):
         params = {"userId": self.config.user_id, "enableImages": "false", "enableUserData": "true",
-                  "fields": "MediaSources,MediaStreams,Artists,AlbumArtist", **params}
-        result = []
+                  "fields": "MediaSources,MediaStreams,Artists,AlbumArtist,ParentId", **params}
+        raw_items = []
         start = 0
         while True:
             data = await self.request("GET", path, params={**params, "startIndex": start, "limit": 200})
             page = data.get("Items", [])
-            result.extend(Item.from_api(item) for item in page)
+            raw_items.extend(page)
             start += len(page)
             if not page or start >= data.get("TotalRecordCount", start + (len(page) == 200)):
                 break
-        return result
+        await self._resolve_parent_artists(raw_items)
+        return [Item.from_api(item, self.parent_artist_cache) for item in raw_items]
 
     async def browse(self, context):
         if context == "Artistas":
