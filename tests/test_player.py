@@ -5,6 +5,12 @@ import pytest
 from jellytui.player import MpvPlayer
 
 
+async def wait_mpv_event(player, name):
+    async with asyncio.timeout(5):
+        while (await player.events.get()).get("event") != name:
+            pass
+
+
 @pytest.mark.skipif(not shutil.which("mpv"), reason="mpv ausente")
 async def test_real_mpv_ipc(tmp_path):
     wav = tmp_path / "test.wav"
@@ -16,18 +22,34 @@ async def test_real_mpv_ipc(tmp_path):
     player = MpvPlayer(audio_output="null")
     try:
         await player.start()
+        # ao=null simula um dispositivo com buffer. No mpv 0.41, time-pos
+        # pausado após seek inclui esse atraso: buffers de 0.05/0.2/0.4 s
+        # produziram desvios de ~0.032/0.192/0.384 s em WAV PCM 8 kHz.
+        # O mesmo ocorre via IPC direto e em 44.1/48 kHz; não é erro do wrapper.
+        # Fixamos o buffer só neste teste; a tolerância é limitada a esse buffer
+        # mais uma amostra, menor que os 100 ms anteriores. Não usar untimed:
+        # precisamos manter pausa e avanço até EOF sob um relógio real.
+        # Referência: https://mpv.io/manual/stable/#audio-output-drivers
+        null_buffer = 0.05
+        await player.command("set_property", "options/ao-null-buffer", null_buffer)
         await player.play(str(wav))
-        async with asyncio.timeout(5):
-            while (await player.events.get()).get("event") != "file-loaded":
-                pass
+        await wait_mpv_event(player, "file-loaded")
+        await wait_mpv_event(player, "playback-restart")
         assert await player.command("get_property", "duration") == pytest.approx(3)
         await player.pause()
         assert await player.command("get_property", "pause") is True
         await player.volume(-5)
         assert await player.command("get_property", "volume") <= 70
-        before_seek = await player.command("get_property", "time-pos")
-        await player.seek(1)
-        assert await player.command("get_property", "time-pos") == pytest.approx(max(0, before_seek + 1), abs=0.1)
+        for offset in (1, -0.5):
+            before_seek = await player.command("get_property", "time-pos")
+            await player.seek(offset)
+            # A resposta do comando confirma aceitação, não término do seek.
+            # Consumir seek antes de playback-restart evita aceitar evento antigo.
+            await wait_mpv_event(player, "seek")
+            await wait_mpv_event(player, "playback-restart")
+            position = await player.command("get_property", "time-pos")
+            assert position == pytest.approx(before_seek + offset, abs=null_buffer + 1 / 8000)
+            assert await player.command("get_property", "pause") is True
         await player.pause()
         async with asyncio.timeout(6):
             while True:
