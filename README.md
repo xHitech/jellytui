@@ -1,152 +1,40 @@
 # jellytui
 
-Reprodutor exclusivamente musical para terminal Linux. Biblioteca Jellyfin, interface textual discreta em Textual e reprodução por mpv, sem janela gráfica ou capas.
+A terminal music client for Jellyfin, powered by mpv.
 
-## Executar
+- Direct Play
+- Synchronized lyrics
+- Keyboard-driven TUI
+- Artists, albums, playlists and favorites
+- Search and contextual playback queue
+- Arch Linux packaging
 
-Python 3.11+ e mpv devem estar disponíveis. Neste ambiente foram encontrados Python 3.14.7 e mpv 0.41.0; a `.venv` já foi criada e as dependências instaladas. Nenhum pacote de sistema foi instalado.
+## Screenshot
 
-```bash
-cd ~/jellyfin-terminal
-source .venv/bin/activate
-jellytui
-```
+<!-- Adicione aqui a screenshot do jellytui em execução (ex: ![jellytui](assets/screenshot.png)) -->
+_Screenshot em breve._
 
-Também funciona sem ativar o ambiente:
+## Features
 
-```bash
-.venv/bin/python -m jellytui
-```
+- **Navegação musical hierárquica e paginada:** Navegue por Artistas, Álbuns, Pastas, Playlists e Favoritos sem sobrecarregar a memória.
+- **Reprodução via mpv:** Áudio de alta fidelidade gerenciado por processo mpv dedicado e controlado via IPC JSON assíncrono em socket Unix privado.
+- **Direct Play original:** Prioriza o stream estático original sem transcodificação arbitrária, respeitando formatos como FLAC, MP3, AAC e Opus.
+- **Letras sincronizadas (LRC):** Suporte à API oficial de letras do Jellyfin (`/Audio/{itemId}/Lyrics`) e parser de arquivos `.lrc`, com sincronização precisa baseada no relógio do mpv.
+- **Fila e contexto contínuo:** A seleção de qualquer faixa cria dinamicamente uma fila a partir do contexto atual (álbum, artista, playlist ou busca), com avanço automático até o término.
+- **Interface responsiva em Textual:** Layout flexível para diferentes dimensões de terminal, colunas adaptativas conforme a categoria e painel Now Playing compacto.
+- **Segurança de credenciais:** Armazenamento isolado no padrão XDG com permissões estritas (`0600`). A senha nunca é salva em disco e o token não é exposto na lista de processos.
 
-Na primeira execução, informe servidor (padrão `http://127.0.0.1:8096`), usuário e senha. Digite a senha no terminal: ela não aparece nem é salva. Após autenticar, a TUI abre automaticamente.
+## Installation
 
-```bash
-jellytui --setup   # configurar novamente ou trocar de servidor/usuário; depois encerra
-jellytui --check   # validar autenticação, contar biblioteca e negociar um stream original
-jellytui --check-play # validar também áudio real com mpv e saída silenciosa
-jellytui --demo    # dados fictícios, sem rede e sem reprodução
-```
+### Requisitos
 
-Para instalar em outro checkout:
+- Linux
+- Python 3.11+
+- [mpv](https://mpv.io) instalado e disponível no sistema (`mpv` no `PATH`)
 
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -e '.[test]'
-```
+### Arch Linux (PKGBUILD)
 
-No Arch, se **faltarem** dependências de sistema, instale-as você mesmo: `sudo pacman -S python mpv`. O programa nunca chama pacman.
-
-## Interface e teclas
-
-A tabela ocupa toda a largura e começa em **Biblioteca**: Artistas, Álbuns, Pastas, Playlists e Favoritos. Enter abre a seleção; Backspace volta um nível e restaura a posição anterior. O caminho do contexto aparece na barra de informações. Não há painel lateral.
-
-Fluxo típico: Biblioteca → Artistas → artista → álbum → faixas. Um artista também permite acessar suas faixas. Pastas parte das bibliotecas de música do Jellyfin; playlists de vídeo não aparecem. Consultas continuam paginadas.
-
-No topo, Now Playing e Letra dividem um painel compacto. O Now Playing mantém título, artista, álbum, posição, duração, progresso, pausa, volume, Direct Play e metadados técnicos. `l` oculta/mostra letras; ocultas, o Now Playing ocupa a largura superior inteira. O indicador `▶` identifica a faixa atual na tabela.
-
-| Tecla | Ação |
-| --- | --- |
-| ↑ / k, ↓ / j | Subir / descer |
-| Enter | Abrir item ou reproduzir a partir da faixa selecionada |
-| Backspace | Voltar um nível |
-| PageUp / PageDown | Página anterior / próxima |
-| Home / End | Primeiro / último item |
-| Tab / Shift+Tab | Alternar foco disponível |
-| Space | Play/pause |
-| n / p | Próxima / anterior na fila |
-| ← / → | Seek de −5 / +5 segundos |
-| + ou = / − | Aumentar / diminuir volume em 5%, limitado a 0–100% |
-| / | Buscar faixas, artistas e álbuns |
-| Enter / Escape na busca | Confirmar / fechar busca |
-| f | Alternar favorito do item selecionado |
-| Q (maiúsculo) | Mostrar fila local |
-| l | Mostrar / ocultar letras |
-| h | Abrir / fechar ajuda |
-| Escape | Fechar ajuda ou busca |
-| q | Sair e encerrar o mpv do aplicativo |
-
-`h` abre ajuda central rolável, organizada por categorias, gerada pela mesma definição dos bindings em `controls.py`. A ajuda não pausa a música nem impede o avanço automático. O rodapé mostra somente Space, n, p, /, l, h e q. Dentro da busca, letras e espaço são texto, não controles do player.
-
-**Contexto de reprodução:** Enter na faixa 3 de uma lista de cinco cria a fila `[faixa 3, faixa 4, faixa 5]`, com índice inicial zero. Entradas não musicais são ignoradas; ordem e repetições são preservadas. Isso vale para álbum, playlist, favoritos, busca e listas de artista. O fim de uma faixa avança automaticamente; o fim da fila para a reprodução. `p` volta dentro desse contexto, não para faixas anteriores à seleção inicial. Navegar por outras listas não muda a fila até tocar outra seleção. A fila permanece apenas na memória.
-
-## Letras sincronizadas
-
-A especificação OpenAPI do servidor Jellyfin **10.11.11** confirma `GET /Audio/{itemId}/Lyrics` (`GetLyrics`). A resposta é um `LyricDto` com `Lyrics[].Text` e `Lyrics[].Start`; `Start` usa ticks de 100 nanossegundos, convertidos para segundos dividindo por 10.000.000. `Metadata` pode estar vazio: timestamps válidos bastam para detectar sincronização. Em uma consulta real, **Duvet retornou 46 linhas**, com primeiros tempos 6,94 s, 12,04 s, 17,01 s e 22,05 s.
-
-O aplicativo usa a letra já fornecida/indexada pelo Jellyfin. Não lê o filesystem remoto, não pesquisa provedores externos, não faz upload e não baixa letras para a biblioteca. HTTP 404 significa letra ausente; falhas de rede aparecem discretamente no painel e não impedem o áudio.
-
-`lyrics.py` também contém parser LRC com timestamps simples, múltiplos timestamps por linha, frações de segundo, metadados e offset em milissegundos. A API já fornece linhas estruturadas: o aplicativo não reconstrói um arquivo LRC nem reaplica offsets aos timestamps devolvidos pelo servidor.
-
-A seleção da linha usa busca binária na posição **real do mpv** (`time-pos`), sem relógio de reprodução próprio. A atualização visual usa o ciclo já existente de 250 ms; o painel só redesenha ao mudar de linha/tamanho/estado. Mostra duas linhas anteriores, a atual destacada e duas próximas. Seek consulta a posição do mpv; pausa mantém a seleção. Ao trocar de faixa, limpa a letra e carrega a nova em segundo plano; resultados atrasados de outra faixa são descartados.
-
-Sem timestamps, mostra um trecho identificado como letra sem sincronização. Sem letra, mostra “Letra não disponível”. O suporte é por linha; cues por palavra do Jellyfin não são usados.
-
-## Configuração e credenciais
-
-`~/.config/jellytui/config.toml` (ou `$XDG_CONFIG_HOME/jellytui/config.toml`) armazena somente URL, ID do usuário, token de acesso e ID aleatório do dispositivo. A gravação é atômica e o arquivo fica com permissão `0600`. Um arquivo existente com permissões abertas é recusado; corrija com `chmod 600 ~/.config/jellytui/config.toml`.
-
-A senha existe somente durante a autenticação via `POST /Users/AuthenticateByName`. Token e senha não são exibidos em mensagens/logs; o token chega ao mpv por IPC, nunca na linha de comando. O socket fica em diretório temporário privado e é removido no encerramento normal. Trocar configuração não altera o servidor nem revoga sessões de outros clientes.
-
-## Reprodução e qualidade
-
-O cliente negocia `POST /Items/{itemId}/PlaybackInfo` com um perfil de áudio para mpv e transcodificação desabilitada. Se o Jellyfin permite Direct Play, usa um stream estático original em `/Audio/{itemId}/stream?static=true` (ou URL estática fornecida pelo servidor). Não converte FLAC nem força codec, sample rate ou quantidade de canais. Se o servidor exigir transcodificação, mostra uma mensagem e não inicia uma conversão silenciosa.
-
-`mpv` roda com `--no-config --no-video --audio-display=no --idle=yes`, controlado por JSON IPC Unix com IDs de requisição, timeouts, propriedades observadas e eventos de fim de arquivo. A saída de áudio é a padrão do sistema. Não há download permanente, cache em disco, filtros de áudio impostos, escrita na biblioteca ou alterações de configuração do servidor. `f` altera somente o favorito do usuário.
-
-Direct Play preserva o arquivo transmitido. Volume digital e a configuração do mixer/dispositivo de áudio do Linux continuam podendo afetar a saída; o aplicativo não promete reprodução bit-perfect nem modifica PipeWire/ALSA.
-
-## Arquitetura
-
-```text
-jellytui/
-  __init__.py
-  __main__.py           CLI e setup interativo
-  app.py                TUI, navegação, fila e controles
-  config.py             TOML privado e validação
-  jellyfin.py           autenticação, biblioteca, favoritos e stream
-  player.py             processo mpv e IPC assíncrono
-  models.py             itens e fila por contexto
-  lyrics.py             parser LRC e modelo temporal
-  controls.py           fonte única dos atalhos e da ajuda
-  demo.py               biblioteca offline explícita
-  widgets/
-    browser.py          entradas da Biblioteca (sem widget lateral)
-    now_playing.py      metadados, estado e progresso
-    track_list.py       lista e navegação principal
-    lyrics.py           janela de letras sincronizadas
-    help.py             modal de ajuda
- tests/                 API simulada, TUI e mpv real
- pyproject.toml         pacote, comando jellytui e dependências
-```
-
-Dependências de execução: `textual>=8.2,<9`, `httpx>=0.28,<0.29`; testes: pytest e pytest-asyncio. Não depende de libmpv nem implementa decodificação de áudio em Python.
-
-## Testes e diagnóstico
-
-```bash
-.venv/bin/python -m pytest -q
-.venv/bin/python -m jellytui --check
-.venv/bin/python -m jellytui --check-play
-JELLYTUI_LIVE_TEST=1 .venv/bin/python -m pytest tests/test_live.py -q
-```
-
-Resultado da validação em 11/09/2026: **47 testes automatizados passaram**, com **1 teste real omitido por padrão**; executado separadamente, **esse teste opt-in contra o servidor real também passou**. A suíte local final levou 23,78 s; o smoke test real, 10,01 s. `pip check` não encontrou conflitos de dependências.
-
-Os testes de mpv usam áudio temporário e saída `null`, sem tocar som nos alto-falantes. Precisam de permissão para sockets Unix; o teste HTTP também precisa de loopback. O restante usa `httpx.MockTransport` e o piloto headless do Textual, sem credenciais reais.
-
-Se não conectar, confira o Tailscale, a URL e se o Jellyfin está acessível. Em HTTP 401/403, use `--setup` para autenticar novamente ou confira permissões da conta. Erros de rede e reprodução aparecem na TUI sem revelar respostas de autenticação. Uma faixa com erro não desencadeia tentativas infinitas: selecione outra ou use `n`. Se o processo mpv morrer, reinicie jellytui.
-
-## Escopo e limites
-
-Implementados: navegação musical hierárquica, autenticação persistente, busca, favoritos, playlists, fila local, controles mpv e painel Now Playing. A API pública e a especificação do servidor Jellyfin 10.11.11 foram consultadas durante a implementação. A validação autenticada no servidor foi concluída: 28 artistas, 73 álbuns e 797 faixas. Um stream FLAC 16-bit / 44,1 kHz / Stereo foi reproduzido em Direct Play por mpv real. O teste integrado da TUI abre Biblioteca → Álbuns → faixas e verifica pausa, seek, volume, próxima/anterior, busca por Duvet, letras reais, ajuda e ocultação do painel. Nenhum favorito é alterado durante os testes reais. Todos os testes de reprodução usaram saída silenciosa; a saída física dos alto-falantes não foi avaliada.
-
-Não implementados: transcodificação de fallback, download, capas, reprodução gapless, embaralhar/repetir, edição de playlists, persistência da fila e relatório de histórico/progresso para o servidor. Os contextos anteriores são restaurados da memória ao voltar; reabra a categoria para consultar mudanças externas. Letras longas são truncadas à largura do painel; letras não sincronizadas mostram apenas um trecho. Bibliotecas muito grandes são carregadas por páginas, mas a lista final permanece em memória.
-
-Referências utilizadas: [OpenAPI oficial do Jellyfin](https://api.jellyfin.org/openapi/jellyfin-openapi-stable.json), a especificação `/api-docs/openapi.json` do próprio servidor e [manual oficial de IPC do mpv](https://mpv.io/manual/stable/#json-ipc).
-
-## Arch Linux
-
-Local build:
+Recomendado no Arch Linux para gerenciar dependências via pacman:
 
 ```bash
 git clone https://github.com/xHitech/jellytui
@@ -154,6 +42,166 @@ cd jellytui/packaging/arch
 makepkg -si
 ```
 
+### Python / venv (Alternativa)
+
+```bash
+git clone https://github.com/xHitech/jellytui
+cd jellytui
+python3 -m venv .venv
+source .venv/bin/activate
+pip install .
+```
+
+Para instalar com as dependências da suíte de testes:
+
+```bash
+pip install -e '.[test]'
+```
+
+## First setup
+
+Na primeira utilização, configure a conexão com o servidor:
+
+```bash
+jellytui --setup
+```
+
+O assistente solicitará:
+1. **URL do servidor** (padrão: `http://127.0.0.1:8096`)
+2. **Usuário**
+3. **Senha** (digitada de forma invisível, usada apenas para autenticar via API e nunca persistida em disco)
+
+Após a autenticação, a interface abre automaticamente. Em execuções seguintes, basta rodar:
+
+```bash
+jellytui
+```
+
+### Utilitários e diagnóstico
+
+```bash
+jellytui --setup      # Reconfigurar servidor/usuário e encerrar
+jellytui --check      # Validar autenticação, conectividade e contagem da biblioteca
+jellytui --check-play # Testar fluxo completo com mpv e áudio silencioso
+jellytui --demo       # Abrir a interface em modo demonstração offline (sem rede)
+```
+
+## Controls
+
+A navegação é totalmente orientada a atalhos de teclado:
+
+| Tecla | Ação |
+| --- | --- |
+| `↑` / `k`, `↓` / `j` | Subir / descer na lista de itens |
+| `Enter` | Abrir pasta/categoria ou reproduzir a partir da faixa selecionada |
+| `Backspace` | Voltar um nível na navegação (preserva seleção anterior) |
+| `PageUp` / `PageDown` | Rolar uma página acima / abaixo |
+| `Home` / `End` | Ir para o primeiro / último item |
+| `Tab` / `Shift+Tab` | Alternar foco entre componentes interativos |
+| `Space` | Reproduzir / pausar áudio |
+| `n` / `p` | Próxima / anterior faixa da fila |
+| `←` / `→` | Retroceder / avançar 5 segundos na faixa |
+| `+` ou `=` / `-` | Aumentar / diminuir volume em 5% (também aceita Numpad `+` e `-`) |
+| `/` | Iniciar busca por faixas, álbuns ou artistas |
+| `Enter` / `Escape` na busca | Confirmar busca / cancelar e fechar |
+| `f` | Alternar favorito do item selecionado |
+| `Q` (maiúsculo) | Exibir a fila de reprodução local |
+| `l` | Alternar exibição do painel de letras sincronizadas |
+| `h` | Abrir / fechar modal com a listagem completa de ajuda |
+| `Escape` | Fechar modal de ajuda ou barra de busca |
+| `q` | Sair do aplicativo e finalizar o mpv |
+
+Pressione `h` a qualquer momento para abrir o modal com todas as teclas e descrições detalhadas.
+
+**Comportamento da fila:** Pressionar `Enter` na terceira faixa de uma lista de cinco itens gera a fila `[faixa 3, faixa 4, faixa 5]`. O fim de uma música avança automaticamente para a próxima até esgotar a fila. A navegação por outras seções da biblioteca não altera a reprodução ativa até que um novo item seja explicitamente reproduzido.
+
+## Synchronized lyrics
+
+O aplicativo se integra ao endpoint oficial do Jellyfin (`GET /Audio/{itemId}/Lyrics`):
+
+- **Sincronização em tempo real:** A posição do cursor nas estrofes acompanha o tempo real do mpv (`time-pos`) consultado via IPC, sem depender de relógios locais desfasados.
+- **Exibição limpa:** Mostra a estrofe atual destacada, acompanhada das linhas anteriores e posteriores para contexto. O painel redesenha apenas quando a linha ou estado mudam.
+- **Parser LRC:** Suporta arquivos estruturados pelo servidor ou no formato padrão LRC com frações de segundo e múltiplos marcadores de tempo por linha.
+- Faixas sem letra ou sem sincronização exibem status indicativo sem travar o áudio ou gerar erros intrusivos.
+
+## Playback / Direct Play
+
+- **Direct Play:** O cliente negocia `POST /Items/{itemId}/PlaybackInfo` requisitando áudio direto. Quando o Jellyfin permite Direct Play, consome o stream original estático (`/Audio/{itemId}/stream?static=true`), preservando a qualidade nativa e taxa de amostragem sem reencodificação desnecessária.
+- Se o servidor requerer transcodificação, uma mensagem explicativa é exibida na interface.
+- **Processo mpv desacoplado:** O mpv executa em segundo plano com as opções `--no-config --no-video --audio-display=no --idle=yes`. A comunicação utiliza JSON IPC sobre socket Unix temporário privado, encerrado de forma limpa ao sair.
+- Não realiza download permanente de arquivos nem modificação dos metadados no servidor.
+
+## Configuration and security
+
+As configurações ficam armazenadas em `$XDG_CONFIG_HOME/jellytui/config.toml` (padrão: `~/.config/jellytui/config.toml`):
+
+- **Permissões rígidas:** O arquivo é gerado de forma atômica com permissão `0600` (leitura e escrita restritas ao proprietário). Arquivos pré-existentes com permissões abertas são rejeitados na inicialização.
+- **Privacidade de senhas:** A senha fornecida no `--setup` é utilizada exclusivamente no handshake de login e nunca é gravada em disco.
+- **Tokens seguros:** O token de sessão é passado ao mpv por meio de IPC Unix em memória, nunca pela linha de comando ou variáveis visíveis via `ps`.
+
+## Arch Linux
+
+O repositório fornece arquivos de empacotamento prontos para Arch Linux dentro do diretório `packaging/`:
+
+- [packaging/arch/PKGBUILD](packaging/arch/PKGBUILD): Receita oficial para a release estável com verificação de integridade via SHA-256.
+- [packaging/arch/.SRCINFO](packaging/arch/.SRCINFO): Metadados sincronizados para o pacote.
+- [packaging/arch-git/PKGBUILD](packaging/arch-git/PKGBUILD): Receita para desenvolvimento contínuo a partir da branch principal do Git.
+
+Para compilar e instalar localmente:
+
+```bash
+git clone https://github.com/xHitech/jellytui
+cd jellytui/packaging/arch
+makepkg -si
+```
+
+## Development / tests
+
+### Arquitetura do código
+
+```text
+jellytui/
+  __init__.py
+  __main__.py           Ponto de entrada CLI e configuração interativa
+  app.py                TUI em Textual, ciclo de vida e navegação
+  config.py             Gerenciamento seguro de configuração TOML
+  jellyfin.py           Cliente HTTP assíncrono para a API do Jellyfin
+  player.py             Gerenciamento do processo mpv e controle IPC Unix
+  models.py             Modelos de dados de faixas, álbuns e filas
+  lyrics.py             Parser de letras sincronizadas LRC e busca temporal
+  controls.py           Mapeamento central de teclas e ações
+  demo.py               Dados simulados para o modo demonstração
+  widgets/
+    browser.py          Navegação nas categorias da Biblioteca
+    now_playing.py      Painel de metadados, progresso e status
+    track_list.py       Tabela responsiva de listagem e navegação
+    lyrics.py           Painel com rolagem de letras sincronizadas
+    help.py             Modal de atalhos e ajuda
+tests/                  Suíte de testes automatizados unitários, TUI e mpv
+packaging/              Empacotamento para distribuições Linux (Arch)
+```
+
+### Execução dos testes
+
+```bash
+# Executar a suíte de testes completa
+pytest -q
+
+# Teste opcional contra servidor Jellyfin real ativo
+JELLYTUI_LIVE_TEST=1 pytest tests/test_live.py -q
+```
+
+- Status atual: **59 passed**, **1 skipped** (teste opt-in para servidor real).
+- Os testes com mpv utilizam saída de áudio `null` silenciosa sem interferir nos dispositivos de reprodução do sistema.
+
+## Limitations
+
+- **Foco estrito em música:** Não processa vídeo, capas gráficas em alta resolução ou elementos de interface gráfica tradicional.
+- **Fila em memória:** A fila de reprodução é mantida durante a sessão atual e não persiste após o fechamento do programa.
+- **Sem download offline:** Todas as faixas são reproduzidas diretamente por streaming a partir do servidor Jellyfin.
+- **Letras existentes:** Apenas exibe letras já catalogadas pelo servidor Jellyfin; não realiza consultas nem uploads para fontes externas.
+- **Mixer do sistema:** Volume e configurações de dispositivo dependem da configuração do subsistema de áudio Linux (PipeWire/PulseAudio/ALSA).
+
 ## License
 
-MIT License. See LICENSE.
+Distribuído sob a licença [MIT](LICENSE). Consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
