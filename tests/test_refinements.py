@@ -285,3 +285,55 @@ async def test_compact_terminal_keeps_metadata_and_footer_visible():
         assert any("FLAC" in row and "Stereo" in row for row in rows[:9])
         assert any("Direct Play" in row for row in rows[:9])
         assert "Play/Pause" in rows[-1] and "Ajuda" in rows[-1] and "Sair" in rows[-1]
+
+
+async def test_context_line_has_no_duplicated_help_and_footer_retains_h():
+    app = JellyTui()
+    async with app.run_test(size=(110, 32)) as pilot:
+        status_text = str(app.query_one("#status", Static).render())
+        assert "Biblioteca · 5 itens" in status_text
+        assert "h ajuda" not in status_text.lower()
+        await pilot.press("enter")
+        status_sub = str(app.query_one("#status", Static).render())
+        assert "Biblioteca › Artistas" in status_sub
+        assert "itens" in status_sub
+        assert "h ajuda" not in status_sub.lower()
+
+        rows = [strip.text for strip in app.screen._compositor.render_strips()]
+        footer_row = rows[-1]
+        assert "h" in footer_row and "Ajuda" in footer_row
+
+
+async def test_volume_controls_main_keyboard_and_numpad():
+    player = Player()
+    app = JellyTui(Library(), player)
+    async with app.run_test(size=(110, 32)) as pilot:
+        await select_tracks(app, pilot)
+        assert player.properties["volume"] == 70
+
+        # tecla + continuar aumentando volume
+        await pilot.press("plus")
+        assert player.properties["volume"] == 75
+        await pilot.press("+")
+        assert player.properties["volume"] == 80
+
+        # tecla - continuar diminuindo volume
+        await pilot.press("minus")
+        assert player.properties["volume"] == 75
+        await pilot.press("-")
+        assert player.properties["volume"] == 70
+
+        # Numpad + (add) aumentar volume
+        await pilot.press("add")
+        assert player.properties["volume"] == 75
+
+        # Numpad - (subtract) diminuir volume
+        await pilot.press("subtract")
+        assert player.properties["volume"] == 70
+
+
+def test_help_reflects_volume_and_numpad_shortcuts():
+    text = help_text().plain
+    assert "+ / Numpad +    Aumentar volume" in text
+    assert "- / Numpad -    Diminuir volume" in text
+    assert "h ou Escape fecha" in text

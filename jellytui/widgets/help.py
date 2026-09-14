@@ -14,7 +14,7 @@ def help_text():
                 text.append("\n")
             text.append(shortcut.group + "\n", style="bold cyan")
             previous_group = shortcut.group
-        text.append(f"{shortcut.label:14} {shortcut.description}\n")
+        text.append(f"{shortcut.label:15} {shortcut.description}\n")
     text.append("\nh ou Escape fecha · ↑/↓ ou PageUp/PageDown rola a ajuda", style="dim")
     return text
 

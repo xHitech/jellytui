@@ -81,10 +81,10 @@ async def test_player_controls_and_auto_advance():
     async with app.run_test(size=(110, 32)) as pilot:
         table = app.query_one(TrackList)
         table.focus()
-        await pilot.press("enter", "enter", "enter", "enter", "space", "right", "left", "plus", "minus")
+        await pilot.press("enter", "enter", "enter", "enter", "space", "right", "left", "plus", "minus", "add", "subtract")
         assert ("pause",) in player.calls
         assert ("seek", 5) in player.calls and ("seek", -5) in player.calls
-        assert ("volume", 5) in player.calls and ("volume", -5) in player.calls
+        assert player.calls.count(("volume", 5)) == 2 and player.calls.count(("volume", -5)) == 2
         await player.events.put({"event": "end-file", "reason": "eof"})
         await pilot.pause(0.4)
         assert app.playing_item.name == "Hurt You"

@@ -152,7 +152,7 @@ class JellyTui(App, inherit_bindings=False):
         table.border_title = str(title)
         table.show_items(items, self.playing_item.id if self.playing_item else None)
         path = " › ".join([view[1] for view in self.history] + [str(title)])
-        self.main_screen.query_one("#status", Static).update(f"{path} · {len(items)} itens · h ajuda")
+        self.main_screen.query_one("#status", Static).update(f"{path} · {len(items)} itens")
 
     @work(group="navigation", exclusive=True)
     @guarded
