@@ -1,6 +1,34 @@
 from dataclasses import dataclass, field
 
 
+def _extract_artist(data: dict) -> str:
+    is_album = data.get("Type") == "MusicAlbum"
+    first_key = "AlbumArtist" if is_album else "Artists"
+    second_key = "Artists" if is_album else "AlbumArtist"
+
+    for key in (first_key, second_key):
+        val = data.get(key)
+        if not val:
+            continue
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+        if isinstance(val, list):
+            names = [a if isinstance(a, str) else a.get("Name", "") for a in val if a]
+            joined = ", ".join(n.strip() for n in names if n and n.strip())
+            if joined:
+                return joined
+
+    for key in ("AlbumArtists", "ArtistItems"):
+        val = data.get(key)
+        if val and isinstance(val, list):
+            names = [a.get("Name", "") if isinstance(a, dict) else str(a) for a in val if a]
+            joined = ", ".join(n.strip() for n in names if n and n.strip())
+            if joined:
+                return joined
+
+    return ""
+
+
 @dataclass
 class Item:
     id: str
@@ -16,7 +44,7 @@ class Item:
     def from_api(cls, data: dict) -> "Item":
         return cls(
             data["Id"], data.get("Name", "Sem título"), data.get("Type", "Folder"),
-            ", ".join(data.get("Artists") or []) or data.get("AlbumArtist", ""),
+            _extract_artist(data),
             data.get("Album", ""), (data.get("RunTimeTicks") or 0) / 10_000_000,
             data.get("UserData", {}).get("IsFavorite", False), data,
         )

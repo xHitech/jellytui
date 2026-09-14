@@ -337,3 +337,89 @@ def test_help_reflects_volume_and_numpad_shortcuts():
     assert "+ / Numpad +    Aumentar volume" in text
     assert "- / Numpad -    Diminuir volume" in text
     assert "h ou Escape fecha" in text
+
+
+def test_album_artist_metadata_extraction():
+    # 1. Álbum com AlbumArtist
+    item_album_artist = Item.from_api({
+        "Id": "a1",
+        "Name": "Asylum",
+        "Type": "MusicAlbum",
+        "AlbumArtist": "Disturbed",
+        "Artists": [],
+    })
+    assert item_album_artist.artist == "Disturbed"
+
+    # 2. Álbum com Artists
+    item_artists = Item.from_api({
+        "Id": "a2",
+        "Name": "Take Me Back to Eden",
+        "Type": "MusicAlbum",
+        "AlbumArtist": None,
+        "Artists": ["Sleep Token"],
+    })
+    assert item_artists.artist == "Sleep Token"
+
+    # 3. Álbum sem artista
+    item_no_artist = Item.from_api({
+        "Id": "a3",
+        "Name": "Avenged Sevenfold",
+        "Type": "MusicAlbum",
+        "AlbumArtist": None,
+        "Artists": [],
+    })
+    assert item_no_artist.artist == ""
+
+
+async def test_album_without_artist_shows_dash_not_album():
+    app = JellyTui()
+    async with app.run_test() as pilot:
+        table = app.query_one(TrackList)
+        item = Item.from_api({
+            "Id": "a_no_art",
+            "Name": "Álbum Sem Artista",
+            "Type": "MusicAlbum",
+            "AlbumArtist": None,
+            "Artists": [],
+        })
+        table.show_items([item], context="Álbuns")
+        cell_text = table.get_cell_at((0, 1)).plain
+        assert cell_text in ("—", "")
+        assert cell_text != "Álbum"
+
+
+async def test_correct_columns_in_artists_albums_and_tracks():
+    app = JellyTui()
+    async with app.run_test(size=(110, 32)) as pilot:
+        table = app.query_one(TrackList)
+
+        # 1. Artistas: Nome | Tipo
+        table.move_cursor(row=0)
+        await pilot.press("enter")
+        await pilot.pause()
+        assert [c.label.plain for c in table.ordered_columns] == ["Nome", "Tipo"]
+        assert table.get_cell_at((0, 0)).plain == "Spiritbox"
+        assert table.get_cell_at((0, 1)).plain == "Artista"
+
+        # 2. Voltar à raiz e navegar para Álbuns: Nome | Artista
+        await pilot.press("backspace")
+        table.move_cursor(row=1)
+        await pilot.press("enter")
+        await pilot.pause()
+        assert [c.label.plain for c in table.ordered_columns] == ["Nome", "Artista"]
+        assert table.get_cell_at((0, 0)).plain == "Eternal Blue"
+        assert table.get_cell_at((0, 1)).plain == "Spiritbox"
+
+        # 3. Entrar no álbum para Faixas: Nome | Artista | Álbum | Tempo
+        await pilot.press("enter")
+        await pilot.pause()
+        assert [c.label.plain for c in table.ordered_columns if c.label.plain] == [
+            "Nome", "Artista", "Álbum", "Tempo"
+        ]
+        assert [c.label.plain for c in table.ordered_columns] == [
+            "", "Nome", "Artista", "Álbum", "Tempo"
+        ]
+        assert table.get_cell_at((0, 1)).plain == "Sun Killer"
+        assert table.get_cell_at((0, 2)).plain == "Spiritbox"
+        assert table.get_cell_at((0, 3)).plain == "Eternal Blue"
+        assert table.get_cell_at((0, 4)).plain == "04:00"

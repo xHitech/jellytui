@@ -63,7 +63,7 @@ class Jellyfin:
 
     async def all_items(self, path="/Items", **params):
         params = {"userId": self.config.user_id, "enableImages": "false", "enableUserData": "true",
-                  "fields": "MediaSources,MediaStreams", **params}
+                  "fields": "MediaSources,MediaStreams,Artists,AlbumArtist", **params}
         result = []
         start = 0
         while True:

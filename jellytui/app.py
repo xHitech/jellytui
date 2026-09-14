@@ -150,7 +150,7 @@ class JellyTui(App, inherit_bindings=False):
         table = self.main_screen.query_one(TrackList)
         self.view_title = str(title)
         table.border_title = str(title)
-        table.show_items(items, self.playing_item.id if self.playing_item else None)
+        table.show_items(items, self.playing_item.id if self.playing_item else None, context=title)
         path = " › ".join([view[1] for view in self.history] + [str(title)])
         self.main_screen.query_one("#status", Static).update(f"{path} · {len(items)} itens")
 
@@ -203,7 +203,7 @@ class JellyTui(App, inherit_bindings=False):
 
     def refresh_playing(self):
         table = self.main_screen.query_one(TrackList)
-        table.show_items(table.items, self.playing_item.id if self.playing_item else None)
+        table.show_items(table.items, self.playing_item.id if self.playing_item else None, context=self.view_title)
         self.update_now_playing()
 
     def action_back(self):
