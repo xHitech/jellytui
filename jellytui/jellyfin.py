@@ -29,7 +29,7 @@ class Jellyfin:
     @property
     def authorization(self):
         value = ('MediaBrowser Client="jellytui", Device="Linux terminal", '
-                 f'DeviceId="{self.config.device_id}", Version="0.1.0"')
+                 f'DeviceId="{self.config.device_id}", Version="0.1.1"')
         if self.config.token:
             value += f', Token="{self.config.token}"'
         return value

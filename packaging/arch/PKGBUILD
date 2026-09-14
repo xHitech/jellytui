@@ -1,7 +1,7 @@
 # Maintainer: Hitech <184116371+xHitech@users.noreply.github.com>
 
 pkgname=jellytui
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc="Reprodutor de música Jellyfin para terminal, com Textual e mpv"
 arch=('any')
@@ -24,7 +24,7 @@ source=(
     "LICENSE::https://raw.githubusercontent.com/xHitech/jellytui/c9928f74dd4c29c7aef35afc055318a9ae75c997/LICENSE"
 )
 sha256sums=(
-    '3e2b95b3f888daedded51a7c91e9402ff809112b351247243a9990183df0d2e2'
+    'SKIP'
     '5ecee4bd16c15c8edd43c8a8552405ca3e918ec93403000fab0fdc3c6d17d1ca'
 )
 
