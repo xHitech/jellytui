@@ -143,3 +143,7 @@ Implementados: navegação musical hierárquica, autenticação persistente, bus
 Não implementados: transcodificação de fallback, download, capas, reprodução gapless, embaralhar/repetir, edição de playlists, persistência da fila e relatório de histórico/progresso para o servidor. Os contextos anteriores são restaurados da memória ao voltar; reabra a categoria para consultar mudanças externas. Letras longas são truncadas à largura do painel; letras não sincronizadas mostram apenas um trecho. Bibliotecas muito grandes são carregadas por páginas, mas a lista final permanece em memória.
 
 Referências utilizadas: [OpenAPI oficial do Jellyfin](https://api.jellyfin.org/openapi/jellyfin-openapi-stable.json), a especificação `/api-docs/openapi.json` do próprio servidor e [manual oficial de IPC do mpv](https://mpv.io/manual/stable/#json-ipc).
+
+## License
+
+MIT License. See LICENSE.
