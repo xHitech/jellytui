@@ -1,0 +1,19 @@
+pkgbase = jellytui
+	pkgdesc = Reprodutor de música Jellyfin para terminal, com Textual e mpv
+	pkgver = 0.1.1
+	pkgrel = 1
+	url = https://github.com/xHitech/jellytui
+	arch = any
+	license = MIT
+	makedepends = python-build
+	makedepends = python-installer
+	makedepends = python-setuptools
+	makedepends = python-wheel
+	depends = mpv
+	depends = python
+	depends = python-httpx
+	depends = python-textual
+	source = jellytui-0.1.1.tar.gz::https://github.com/xHitech/jellytui/archive/refs/tags/v0.1.1.tar.gz
+	sha256sums = 22a7dea4ccbeed7338008f0811607d8be7a49cb1cc600a58731affcf8f0807a0
+
+pkgname = jellytui

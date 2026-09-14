@@ -19,14 +19,8 @@ makedepends=(
     'python-setuptools'
     'python-wheel'
 )
-source=(
-    "$pkgname-$pkgver.tar.gz::https://github.com/xHitech/jellytui/archive/refs/tags/v$pkgver.tar.gz"
-    "LICENSE::https://raw.githubusercontent.com/xHitech/jellytui/c9928f74dd4c29c7aef35afc055318a9ae75c997/LICENSE"
-)
-sha256sums=(
-    'SKIP'
-    '5ecee4bd16c15c8edd43c8a8552405ca3e918ec93403000fab0fdc3c6d17d1ca'
-)
+source=("$pkgname-$pkgver.tar.gz::https://github.com/xHitech/jellytui/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('22a7dea4ccbeed7338008f0811607d8be7a49cb1cc600a58731affcf8f0807a0')
 
 build() {
     cd "$pkgname-$pkgver"
@@ -36,9 +30,5 @@ build() {
 package() {
     cd "$pkgname-$pkgver"
     python -m installer --destdir="$pkgdir" dist/*.whl
-    if [ -f LICENSE ]; then
-        install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    else
-        install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    fi
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
