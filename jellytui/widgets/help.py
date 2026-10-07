@@ -3,6 +3,7 @@ from textual.screen import ModalScreen
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 from ..controls import SHORTCUTS
+from ..i18n import t
 
 
 def help_text():
@@ -15,7 +16,7 @@ def help_text():
             text.append(shortcut.group + "\n", style="bold cyan")
             previous_group = shortcut.group
         text.append(f"{shortcut.label:15} {shortcut.description}\n")
-    text.append("\nh ou Escape fecha · ↑/↓ ou PageUp/PageDown rola a ajuda", style="dim")
+    text.append("\n" + t("h or Escape closes · ↑/↓ or PageUp/PageDown scrolls help"), style="dim")
     return text
 
 
@@ -33,5 +34,5 @@ class HelpScreen(ModalScreen):
 
     def on_mount(self):
         scroll = self.query_one(VerticalScroll)
-        scroll.border_title = "JELLYTUI · AJUDA"
+        scroll.border_title = t("JELLYTUI · HELP")
         scroll.focus()

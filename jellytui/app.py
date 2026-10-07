@@ -14,6 +14,7 @@ from .widgets.help import HelpScreen
 from .widgets.now_playing import NowPlaying
 from .widgets.lyrics import LyricsPanel
 from .widgets.track_list import TrackList
+from .i18n import t
 
 
 def guarded(method):
@@ -50,20 +51,20 @@ class JellyTui(App, inherit_bindings=False):
         self.player = player
         self.queue = Queue()
         self.history = []
-        self.context = "Biblioteca"
-        self.view_title = "Biblioteca"
+        self.context = "Library"
+        self.view_title = t("Library")
         self.play_lock = asyncio.Lock()
         self.playing_item = None
         self.lyric_generation = 0
         self.quality = ""
-        self.mode = "DEMO — sem reprodução" if player is None else ""
+        self.mode = t("DEMO — no playback") if player is None else ""
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="top"):
             yield NowPlaying()
             yield LyricsPanel()
         yield TrackList()
-        yield Input(placeholder="Buscar músicas, artistas e álbuns… Enter confirma; Escape fecha", id="search")
+        yield Input(placeholder=t("Search tracks, artists, and albums… Enter confirms; Escape closes"), id="search")
         yield Static("jellytui", id="status", markup=False)
         yield Footer()
 
@@ -82,7 +83,7 @@ class JellyTui(App, inherit_bindings=False):
     @work(group="navigation", exclusive=True)
     @guarded
     async def initial_load(self):
-        await self.load("Biblioteca", remember=False)
+        await self.load("Library", remember=False)
 
     async def on_unmount(self):
         if self.player:
@@ -114,14 +115,15 @@ class JellyTui(App, inherit_bindings=False):
                     if self.queue.move(1):
                         await self.play_current()
                     else:
-                        self.mode = "Fim da fila"
+                        self.mode = t("End of queue")
                         self.player.properties["pause"] = True
                 elif event.get("reason") == "error":
-                    self.mode = "Falha na reprodução"
-                    raise PlayerError("mpv não conseguiu reproduzir a faixa. Verifique conexão, acesso e saída de áudio; n tenta a próxima.")
+                    self.mode = t("Playback failed")
+                    raise PlayerError(t("mpv could not play the track. Check the connection, access, and audio output; "
+                                        "n tries the next one."))
             elif event.get("event") == "ipc-disconnected":
-                self.mode = "mpv desconectado"
-                raise PlayerError("mpv encerrou inesperadamente. Reinicie jellytui para reconectar o player.")
+                self.mode = t("mpv disconnected")
+                raise PlayerError(t("mpv exited unexpectedly. Restart jellytui to reconnect the player."))
 
     def update_now_playing(self):
         state = self.player.properties if self.player else {}
@@ -132,13 +134,13 @@ class JellyTui(App, inherit_bindings=False):
 
 
     async def load(self, context, remember=True):
-        self.main_screen.query_one("#status", Static).update("Carregando biblioteca…")
+        self.main_screen.query_one("#status", Static).update(t("Loading library…"))
         items = (library_entries()
-                 if context == "Biblioteca" else await self.library.browse(context))
+                 if context == "Library" else await self.library.browse(context))
         if remember:
             self.remember_view()
         self.context = context
-        self.display(items, context.name if isinstance(context, Item) else context)
+        self.display(items, context.name if isinstance(context, Item) else t(context))
         self.main_screen.query_one(TrackList).move_cursor(row=0)
         return items
 
@@ -152,7 +154,7 @@ class JellyTui(App, inherit_bindings=False):
         table.border_title = str(title)
         table.show_items(items, self.playing_item.id if self.playing_item else None, context=title)
         path = " › ".join([view[1] for view in self.history] + [str(title)])
-        self.main_screen.query_one("#status", Static).update(f"{path} · {len(items)} itens")
+        self.main_screen.query_one("#status", Static).update(t("{path} · {count} items", path=path, count=len(items)))
 
     @work(group="navigation", exclusive=True)
     @guarded
@@ -165,7 +167,7 @@ class JellyTui(App, inherit_bindings=False):
             self.queue.play_from(table.items, table.cursor_row)
             await self.play_current()
         else:
-            await self.load(item.name if item.kind == "Category" else item)
+            await self.load(item.id if item.kind == "Category" else item)
 
     async def play_current(self):
         async with self.play_lock:
@@ -178,7 +180,7 @@ class JellyTui(App, inherit_bindings=False):
                 self.quality, self.mode = stream.quality, stream.mode
             self.playing_item = item
             self.lyric_generation += 1
-            self.main_screen.query_one(LyricsPanel).set_lyrics(message="Carregando letra…")
+            self.main_screen.query_one(LyricsPanel).set_lyrics(message=t("Loading lyrics…"))
             self.load_lyrics(item, self.lyric_generation)
             self.refresh_playing()
 
@@ -186,10 +188,10 @@ class JellyTui(App, inherit_bindings=False):
     async def load_lyrics(self, item, generation):
         try:
             lyrics = await self.library.lyrics(item)
-            message = "Letra não disponível"
+            message = t("Lyrics not available")
         except JellyfinError:
             lyrics = None
-            message = "Não foi possível carregar a letra"
+            message = t("Could not load lyrics")
         if generation == self.lyric_generation:
             panel = self.main_screen.query_one(LyricsPanel)
             panel.set_lyrics(lyrics, message)
@@ -237,7 +239,7 @@ class JellyTui(App, inherit_bindings=False):
     async def on_input_submitted(self, event: Input.Submitted):
         items = await self.library.search(event.value)
         self.remember_view()
-        self.display(items, f"Busca: {event.value}")
+        self.display(items, t("Search: {term}", term=event.value))
         event.input.display = False
         self.main_screen.query_one(TrackList).focus()
 
@@ -253,7 +255,7 @@ class JellyTui(App, inherit_bindings=False):
 
     def action_show_queue(self):
         self.remember_view()
-        self.display(self.queue.items, "Fila local")
+        self.display(self.queue.items, t("Local queue"))
         self.main_screen.query_one(TrackList).focus()
 
     @guarded

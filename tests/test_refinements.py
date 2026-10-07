@@ -50,7 +50,7 @@ class Player:
 
 async def select_tracks(app, pilot, row=0):
     table = app.main_screen.query_one(TrackList)
-    app.display(await app.library.browse("Favoritos"), "Faixas")
+    app.display(await app.library.browse("Favorites"), "Tracks")
     table.move_cursor(row=row)
     table.focus()
     await pilot.press("enter")
@@ -63,7 +63,7 @@ async def test_levels_back_and_cursor_restore():
         table = app.query_one(TrackList)
         assert table.region.width == app.size.width
         assert not app.query("#browser")
-        assert [i.name for i in table.items] == ["Artistas", "Álbuns", "Pastas", "Playlists", "Favoritos"]
+        assert [i.name for i in table.items] == ["Artists", "Albums", "Folders", "Playlists", "Favorites"]
         await pilot.press("enter", "enter", "enter")
         assert table.items[0].name == "Sun Killer"
         await pilot.press("backspace")
@@ -71,13 +71,13 @@ async def test_levels_back_and_cursor_restore():
         await pilot.press("backspace")
         assert table.selected.name == "Spiritbox"
         await pilot.press("backspace")
-        assert app.view_title == "Biblioteca"
+        assert app.view_title == "Library"
         await pilot.press("j", "j", "enter")
-        assert app.view_title == "Pastas"
+        assert app.view_title == "Folders"
         await pilot.press("backspace")
-        assert table.cursor_row == 2 and table.selected.name == "Pastas"
+        assert table.cursor_row == 2 and table.selected.name == "Folders"
         await pilot.press("backspace")
-        assert app.view_title == "Biblioteca"
+        assert app.view_title == "Library"
 
 
 @pytest.mark.parametrize("category", range(5))
@@ -94,11 +94,11 @@ async def test_every_root_category_remains_reachable(category):
         assert table.cursor_row == category
 
 
-@pytest.mark.parametrize("context", ["Álbum", "Playlist", "Favoritos", "Busca", "Faixas do artista"])
+@pytest.mark.parametrize("context", ["Album", "Playlist", "Favorites", "Search", "Artist tracks"])
 async def test_context_suffix_and_auto_advance(context):
     app = JellyTui(Library(), Player())
     async with app.run_test() as pilot:
-        items = [Item("a", "Álbum", "MusicAlbum")] + [Item(str(i), str(i), "Audio") for i in range(5)]
+        items = [Item("a", "Album", "MusicAlbum")] + [Item(str(i), str(i), "Audio") for i in range(5)]
         app.display(items, context)
         table = app.query_one(TrackList)
         table.move_cursor(row=3)  # terceira faixa: há um álbum antes das faixas
@@ -114,7 +114,7 @@ async def test_context_suffix_and_auto_advance(context):
         assert app.playing_item.id == "4"
         await app.player.events.put({"event": "end-file", "reason": "eof"})
         await pilot.pause(0.3)
-        assert app.mode == "Fim da fila"
+        assert app.mode == "End of queue"
 
 
 async def test_lyrics_follow_real_position_seek_pause_and_toggle():
@@ -152,7 +152,7 @@ async def test_track_change_clears_and_reloads_lyrics():
         await pilot.press("n")
         await app.workers.wait_for_complete()
         assert not panel.lyrics.lines
-        assert "Letra não disponível" in str(panel.render())
+        assert "Lyrics not available" in str(panel.render())
         await pilot.press("n")
         await app.workers.wait_for_complete()
         assert panel.lyrics.lines[0].text == "Intro 2"
@@ -168,11 +168,11 @@ async def test_slow_lyrics_do_not_block_or_replace_new_track():
             return await super().lyrics(item)
     app = JellyTui(Slow(), Player())
     async with app.run_test() as pilot:
-        app.display(await app.library.browse("Favoritos"), "Faixas")
+        app.display(await app.library.browse("Favorites"), "Tracks")
         await pilot.press("enter")
         assert app.playing_item.id == "0"
         panel = app.query_one(LyricsPanel)
-        assert not panel.lyrics.lines and panel.message == "Carregando letra…"
+        assert not panel.lyrics.lines and panel.message == "Loading lyrics…"
         await pilot.press("n", "n")
         gate.set()
         await app.workers.wait_for_complete()
@@ -188,7 +188,7 @@ async def test_lyric_network_error_does_not_stop_music():
     async with app.run_test() as pilot:
         await select_tracks(app, pilot)
         assert app.playing_item and not app.player.properties["pause"]
-        assert app.query_one(LyricsPanel).message == "Não foi possível carregar a letra"
+        assert app.query_one(LyricsPanel).message == "Could not load lyrics"
 
 
 async def test_help_closes_both_keys_and_playback_continues():
@@ -249,10 +249,10 @@ async def test_loading_replacement_clears_previous_lines_and_redraw_is_cached():
         assert panel.last_render == signature  # mesma linha: nenhum novo render
         await pilot.press("n")
         assert not panel.lyrics.lines
-        assert panel.message == "Carregando letra…"
+        assert panel.message == "Loading lyrics…"
         gate.set()
         await app.workers.wait_for_complete()
-        assert panel.message == "Letra não disponível"
+        assert panel.message == "Lyrics not available"
 
 
 async def test_stale_mpv_eof_does_not_skip_current_track():
@@ -269,9 +269,9 @@ async def test_lyrics_plain_text_and_no_song_message():
     async with app.run_test() as pilot:
         panel = app.query_one(LyricsPanel)
         panel.sync(0)
-        assert "Letra não disponível" in str(panel.render())
+        assert "Lyrics not available" in str(panel.render())
         panel.set_lyrics(Lyrics(plain=["Plain line"]))
-        assert "Letra sem sincronização" in str(panel.render())
+        assert "Unsynced lyrics" in str(panel.render())
         assert panel.current_index == -1
 
 
@@ -284,24 +284,24 @@ async def test_compact_terminal_keeps_metadata_and_footer_visible():
         rows = [strip.text for strip in app.screen._compositor.render_strips()]
         assert any("FLAC" in row and "Stereo" in row for row in rows[:9])
         assert any("Direct Play" in row for row in rows[:9])
-        assert "Play/Pause" in rows[-1] and "Ajuda" in rows[-1] and "Sair" in rows[-1]
+        assert "Play/Pause" in rows[-1] and "Help" in rows[-1] and "Quit" in rows[-1]
 
 
 async def test_context_line_has_no_duplicated_help_and_footer_retains_h():
     app = JellyTui()
     async with app.run_test(size=(110, 32)) as pilot:
         status_text = str(app.query_one("#status", Static).render())
-        assert "Biblioteca · 5 itens" in status_text
-        assert "h ajuda" not in status_text.lower()
+        assert "Library · 5 items" in status_text
+        assert "h help" not in status_text.lower()
         await pilot.press("enter")
         status_sub = str(app.query_one("#status", Static).render())
-        assert "Biblioteca › Artistas" in status_sub
-        assert "itens" in status_sub
-        assert "h ajuda" not in status_sub.lower()
+        assert "Library › Artists" in status_sub
+        assert "items" in status_sub
+        assert "h help" not in status_sub.lower()
 
         rows = [strip.text for strip in app.screen._compositor.render_strips()]
         footer_row = rows[-1]
-        assert "h" in footer_row and "Ajuda" in footer_row
+        assert "h" in footer_row and "Help" in footer_row
 
 
 async def test_volume_controls_main_keyboard_and_numpad():
@@ -334,9 +334,9 @@ async def test_volume_controls_main_keyboard_and_numpad():
 
 def test_help_reflects_volume_and_numpad_shortcuts():
     text = help_text().plain
-    assert "+ / Numpad +    Aumentar volume" in text
-    assert "- / Numpad -    Diminuir volume" in text
-    assert "h ou Escape fecha" in text
+    assert "+ / Numpad +    Volume up" in text
+    assert "- / Numpad -    Volume down" in text
+    assert "h or Escape closes" in text
 
 
 def test_album_artist_metadata_extraction():
@@ -412,7 +412,7 @@ async def test_batch_parent_artist_resolution():
 
     cfg = Config("http://mock-server", "uid", "tok", "dev")
     client = Jellyfin(cfg, transport=MockTransport())
-    albums = await client.browse("Álbuns")
+    albums = await client.browse("Albums")
     assert albums[0].name == "City of Evil" and albums[0].artist == "Avenged Sevenfold"
     assert albums[1].name == "Believe" and albums[1].artist == "Disturbed"
     assert albums[2].name == "Sem Pai" and albums[2].artist == ""
@@ -431,10 +431,10 @@ async def test_album_without_artist_shows_dash_not_album():
             "AlbumArtist": None,
             "Artists": [],
         })
-        table.show_items([item], context="Álbuns")
+        table.show_items([item], context="Albums")
         cell_text = table.get_cell_at((0, 1)).plain
         assert cell_text in ("—", "")
-        assert cell_text != "Álbum"
+        assert cell_text != "Album"
 
 
 async def test_correct_columns_in_artists_albums_and_tracks():
@@ -442,31 +442,31 @@ async def test_correct_columns_in_artists_albums_and_tracks():
     async with app.run_test(size=(110, 32)) as pilot:
         table = app.query_one(TrackList)
 
-        # 1. Artistas: Nome | Tipo
+        # 1. Artists: Name | Type
         table.move_cursor(row=0)
         await pilot.press("enter")
         await pilot.pause()
-        assert [c.label.plain for c in table.ordered_columns] == ["Nome", "Tipo"]
+        assert [c.label.plain for c in table.ordered_columns] == ["Name", "Type"]
         assert table.get_cell_at((0, 0)).plain == "Spiritbox"
-        assert table.get_cell_at((0, 1)).plain == "Artista"
+        assert table.get_cell_at((0, 1)).plain == "Artist"
 
-        # 2. Voltar à raiz e navegar para Álbuns: Nome | Artista
+        # 2. Back to the root and open Albums: Name | Artist
         await pilot.press("backspace")
         table.move_cursor(row=1)
         await pilot.press("enter")
         await pilot.pause()
-        assert [c.label.plain for c in table.ordered_columns] == ["Nome", "Artista"]
+        assert [c.label.plain for c in table.ordered_columns] == ["Name", "Artist"]
         assert table.get_cell_at((0, 0)).plain == "Eternal Blue"
         assert table.get_cell_at((0, 1)).plain == "Spiritbox"
 
-        # 3. Entrar no álbum para Faixas: Nome | Artista | Álbum | Tempo
+        # 3. Open the album for tracks: Name | Artist | Album | Time
         await pilot.press("enter")
         await pilot.pause()
         assert [c.label.plain for c in table.ordered_columns if c.label.plain] == [
-            "Nome", "Artista", "Álbum", "Tempo"
+            "Name", "Artist", "Album", "Time"
         ]
         assert [c.label.plain for c in table.ordered_columns] == [
-            "", "Nome", "Artista", "Álbum", "Tempo"
+            "", "Name", "Artist", "Album", "Time"
         ]
         assert table.get_cell_at((0, 1)).plain == "Sun Killer"
         assert table.get_cell_at((0, 2)).plain == "Spiritbox"

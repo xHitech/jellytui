@@ -7,21 +7,22 @@ from .app import JellyTui
 from .config import Config, ConfigError, DEFAULT_SERVER, normalize_server, config_path
 from .jellyfin import Jellyfin, JellyfinError
 from .player import MpvPlayer, PlayerError
+from .i18n import t
 
 
 async def setup():
     if not sys.stdin.isatty():
-        raise ConfigError("Execute --setup em um terminal interativo; a senha será digitada sem eco.")
-    print("jellytui — configuração (a senha não será salva)")
-    server = normalize_server(input(f"URL do servidor [{DEFAULT_SERVER}]: ").strip() or DEFAULT_SERVER)
-    username = input("Usuário: ").strip()
-    password = getpass.getpass("Senha: ")
+        raise ConfigError(t("Run --setup in an interactive terminal; the password is typed without echo."))
+    print(t("jellytui — setup (the password will not be saved)"))
+    server = normalize_server(input(t("Server URL [{default}]: ", default=DEFAULT_SERVER)).strip() or DEFAULT_SERVER)
+    username = input(t("Username: ")).strip()
+    password = getpass.getpass(t("Password: "))
     client = Jellyfin(Config(server, "", ""))
     try:
         config = await client.authenticate(username, password)
         password = ""
         config.save()
-        print(f"Autenticação concluída. Configuração privada salva em {config_path()}")
+        print(t("Authentication complete. Private config saved to {path}", path=config_path()))
         return config
     finally:
         password = ""
@@ -31,13 +32,15 @@ async def setup():
 async def check(config, play=False):
     api = Jellyfin(config)
     try:
-        artists = await api.browse("Artistas")
-        albums = await api.browse("Álbuns")
+        artists = await api.browse("Artists")
+        albums = await api.browse("Albums")
         tracks = await api.all_items(includeItemTypes="Audio", recursive="true")
-        print(f"Conexão autenticada: {len(artists)} artistas, {len(albums)} álbuns, {len(tracks)} faixas.")
+        print(t("Authenticated connection: {artists} artists, {albums} albums, {tracks} tracks.",
+                artists=len(artists), albums=len(albums), tracks=len(tracks)))
         if tracks:
             stream = await api.stream(tracks[0])
-            print(f"Stream negociado: {stream.mode}; {stream.quality or 'metadados indisponíveis'}.")
+            print(t("Negotiated stream: {mode}; {quality}.",
+                    mode=stream.mode, quality=stream.quality or t("metadata unavailable")))
             if play:
                 player = MpvPlayer(audio_output="null")
                 try:
@@ -49,17 +52,18 @@ async def check(config, play=False):
                             if event.get("event") == "file-loaded":
                                 break
                             if event.get("event") in ("end-file", "ipc-disconnected"):
-                                raise PlayerError("mpv não conseguiu abrir a faixa do Jellyfin.")
+                                raise PlayerError(t("mpv could not open the Jellyfin track."))
                         await asyncio.sleep(2)
                         position = await player.command("get_property", "time-pos")
                         if not position or position <= 0:
-                            raise PlayerError("mpv não avançou na faixa do Jellyfin.")
+                            raise PlayerError(t("mpv did not advance through the Jellyfin track."))
                         await player.pause()
                         await player.seek(5)
                         await player.volume(-5)
-                        print(f"mpv reproduziu {position:.1f}s do stream real; pausa, seek e volume responderam. Saída silenciosa (null).")
+                        print(t("mpv played {position:.1f}s of the real stream; pause, seek, and volume responded. "
+                                "Silent output (null).", position=position))
                 except TimeoutError:
-                    raise PlayerError("Tempo esgotado ao abrir a faixa real no mpv.") from None
+                    raise PlayerError(t("Timed out opening the real track in mpv.")) from None
                 finally:
                     await player.close()
     finally:
@@ -67,11 +71,12 @@ async def check(config, play=False):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Jellytui — música Jellyfin no terminal")
-    parser.add_argument("--demo", action="store_true", help="Biblioteca fictícia, sem conexão ou reprodução")
-    parser.add_argument("--setup", action="store_true", help="Autenticar ou alterar servidor/usuário")
-    parser.add_argument("--check", action="store_true", help="Verificar biblioteca e negociação de Direct Play")
-    parser.add_argument("--check-play", action="store_true", help="Validar também streaming real no mpv com saída silenciosa")
+    parser = argparse.ArgumentParser(description=t("Jellytui — Jellyfin music in the terminal"))
+    parser.add_argument("--demo", action="store_true", help=t("Fake library, no connection or playback"))
+    parser.add_argument("--setup", action="store_true", help=t("Authenticate or change server/user"))
+    parser.add_argument("--check", action="store_true", help=t("Check library and Direct Play negotiation"))
+    parser.add_argument("--check-play", action="store_true",
+                        help=t("Also validate real streaming in mpv with silent output"))
     args = parser.parse_args()
     try:
         if args.demo:
@@ -85,13 +90,13 @@ def main():
             asyncio.run(check(config, play=args.check_play))
             return
         if not shutil.which("mpv"):
-            raise ConfigError("mpv não encontrado. No Arch, instale manualmente: sudo pacman -S mpv")
+            raise ConfigError(t("mpv not found. On Arch, install it manually: sudo pacman -S mpv"))
         JellyTui(Jellyfin(config), MpvPlayer()).run()
     except (ConfigError, JellyfinError, PlayerError) as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(1)
     except (KeyboardInterrupt, EOFError):
-        print("\nCancelado.", file=sys.stderr)
+        print("\n" + t("Cancelled."), file=sys.stderr)
         raise SystemExit(130)
 
 

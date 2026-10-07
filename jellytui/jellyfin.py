@@ -5,6 +5,7 @@ import httpx
 from .config import Config
 from .models import Item, _extract_artist
 from .lyrics import Lyrics
+from .i18n import t
 
 
 class JellyfinError(Exception):
@@ -41,17 +42,17 @@ class Jellyfin:
             if missing_ok and response.status_code == 404:
                 return {}
             if response.status_code in (401, 403):
-                raise JellyfinError("Acesso negado. Verifique usuário/permissões ou execute jellytui --setup.")
+                raise JellyfinError(t("Access denied. Check user/permissions or run jellytui --setup."))
             response.raise_for_status()
             return response.json() if response.content else {}
         except httpx.TimeoutException:
-            raise JellyfinError("Jellyfin demorou a responder. Verifique a conexão Tailscale e tente novamente.") from None
+            raise JellyfinError(t("Jellyfin took too long to respond. Check the Tailscale connection and try again.")) from None
         except httpx.HTTPStatusError as error:
-            raise JellyfinError(f"Jellyfin retornou HTTP {error.response.status_code}.") from None
+            raise JellyfinError(t("Jellyfin returned HTTP {status}.", status=error.response.status_code)) from None
         except httpx.HTTPError:
-            raise JellyfinError("Não foi possível conectar ao Jellyfin. Verifique servidor e Tailscale.") from None
+            raise JellyfinError(t("Could not connect to Jellyfin. Check the server and Tailscale.")) from None
         except ValueError:
-            raise JellyfinError("O servidor retornou uma resposta inválida.") from None
+            raise JellyfinError(t("The server returned an invalid response.")) from None
 
     async def authenticate(self, username, password):
         data = await self.request("POST", "/Users/AuthenticateByName", json={"Username": username, "Pw": password})
@@ -59,7 +60,7 @@ class Jellyfin:
             self.config.user_id = data["User"]["Id"]
             self.config.token = data["AccessToken"]
         except KeyError:
-            raise JellyfinError("Resposta de autenticação incompleta.") from None
+            raise JellyfinError(t("Incomplete authentication response.")) from None
         return self.config
 
     async def _resolve_parent_artists(self, raw_items: list[dict]):
@@ -103,17 +104,17 @@ class Jellyfin:
         return [Item.from_api(item, self.parent_artist_cache) for item in raw_items]
 
     async def browse(self, context):
-        if context == "Artistas":
+        if context == "Artists":
             return await self.all_items("/Artists", sortBy="SortName")
-        if context == "Álbuns":
+        if context == "Albums":
             return await self.all_items(includeItemTypes="MusicAlbum", recursive="true", sortBy="SortName")
         if context == "Playlists":
             items = await self.all_items(includeItemTypes="Playlist", recursive="true", sortBy="SortName")
             return [i for i in items if i.raw.get("MediaType") == "Audio"]
-        if context == "Favoritos":
+        if context == "Favorites":
             return await self.all_items(includeItemTypes="Audio,MusicAlbum,MusicArtist", recursive="true",
                                         filters="IsFavorite", sortBy="SortName")
-        if context == "Pastas":
+        if context == "Folders":
             data = await self.request("GET", "/UserViews", params={"userId": self.config.user_id})
             return [Item.from_api(i) for i in data.get("Items", []) if i.get("CollectionType") == "music"]
         if context.kind == "MusicArtist":
@@ -151,7 +152,7 @@ class Jellyfin:
         sources = info.get("MediaSources", [])
         source = next((s for s in sources if s.get("SupportsDirectPlay")), None)
         if not source:
-            raise JellyfinError("Jellyfin não disponibilizou Direct Play. Transcodificação está desativada para preservar o áudio.")
+            raise JellyfinError(t("Jellyfin did not offer Direct Play. Transcoding is disabled to preserve audio quality."))
         # DirectStreamUrl é opcional no contrato: static=true serve os bytes originais.
         provided = source.get("DirectStreamUrl")
         # Uma URL de remux/transcode não deve ser rotulada como original.
@@ -164,7 +165,7 @@ class Jellyfin:
             }))
         target, server = urlsplit(url), urlsplit(self.config.server)
         if (target.scheme, target.netloc) != (server.scheme, server.netloc):
-            raise JellyfinError("O servidor forneceu um stream em outra origem; credenciais não foram enviadas.")
+            raise JellyfinError(t("The server provided a stream from another origin; credentials were not sent."))
         audio = next((s for s in source.get("MediaStreams", []) if s.get("Type") == "Audio"), {})
         parts = [str(audio.get("Codec", "")).upper()]
         if audio.get("BitDepth"):
@@ -172,7 +173,7 @@ class Jellyfin:
         if audio.get("SampleRate"):
             parts.append(f"{audio['SampleRate'] / 1000:g} kHz")
         if audio.get("Channels"):
-            parts.append({1: "Mono", 2: "Stereo"}.get(audio["Channels"], f"{audio['Channels']} canais"))
+            parts.append({1: "Mono", 2: "Stereo"}.get(audio["Channels"], t("{count} channels", count=audio["Channels"])))
         return Stream(url, {"Authorization": self.authorization}, " • ".join(p for p in parts if p))
 
     async def close(self):

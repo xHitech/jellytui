@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
+from .i18n import t
 
 DEFAULT_SERVER = "http://127.0.0.1:8096"
 
@@ -19,11 +20,20 @@ def config_path() -> Path:
     return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "jellytui" / "config.toml"
 
 
+def read_language(path: Path | None = None) -> str | None:
+    """Optional `language` key from config.toml; readable even without a login."""
+    try:
+        value = tomllib.loads((path or config_path()).read_text()).get("language")
+    except (OSError, ValueError):
+        return None
+    return value if isinstance(value, str) and value.strip() else None
+
+
 def normalize_server(server: str) -> str:
     server = server.strip().rstrip("/")
     parts = urlsplit(server)
     if parts.scheme not in ("http", "https") or not parts.hostname or parts.username or parts.password or parts.query or parts.fragment:
-        raise ConfigError("Use uma URL HTTP(S) sem credenciais, query ou fragmento.")
+        raise ConfigError(t("Use an HTTP(S) URL without credentials, query, or fragment."))
     return server
 
 
@@ -41,7 +51,7 @@ class Config:
             return None
         try:
             if path.is_symlink() or path.stat().st_mode & 0o077:
-                raise ConfigError(f"Configuração exige arquivo regular privado (chmod 600 {path}).")
+                raise ConfigError(t("Config must be a private regular file (chmod 600 {path}).", path=path))
             data = tomllib.loads(path.read_text())
             result = cls(**{key: data[key] for key in ("server", "user_id", "token", "device_id")})
             result.server = normalize_server(result.server)
@@ -51,7 +61,7 @@ class Config:
                 raise ValueError
             return result
         except (OSError, ValueError, KeyError, TypeError):
-            raise ConfigError("Configuração inválida ou ilegível. Execute jellytui --setup.") from None
+            raise ConfigError(t("Invalid or unreadable config. Run jellytui --setup.")) from None
 
     def save(self, path: Path | None = None):
         path = path or config_path()
@@ -59,6 +69,9 @@ class Config:
         self.server = normalize_server(self.server)
         content = "".join(f"{key} = {json.dumps(getattr(self, key), ensure_ascii=False)}\n"
                           for key in ("server", "user_id", "token", "device_id"))
+        # The language is not part of the login; keep it when --setup rewrites the file.
+        if language := read_language(path):
+            content += f"language = {json.dumps(language, ensure_ascii=False)}\n"
         fd, temp = tempfile.mkstemp(prefix=".config-", dir=path.parent)
         try:
             with os.fdopen(fd, "w") as file:

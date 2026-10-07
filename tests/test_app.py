@@ -6,7 +6,7 @@ async def test_demo_navigation():
     app = JellyTui()
     async with app.run_test(size=(110, 32)) as pilot:
         table = app.query_one(TrackList)
-        assert table.items[0].name == "Artistas"
+        assert table.items[0].name == "Artists"
         assert not app.query("#browser")
         table.focus()
         await pilot.press("enter")
@@ -40,7 +40,7 @@ async def test_search_keys_are_text_and_favorite():
         await pilot.press("f")
         assert table.selected.favorite
         await pilot.press("backspace")
-        assert table.selected.name == "Artistas"
+        assert table.selected.name == "Artists"
 
 
 async def test_errors_keep_app_running():

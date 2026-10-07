@@ -23,9 +23,9 @@ def test_long_metadata_caps_and_small_terminal_priority():
 
 
 def test_two_columns_and_unicode_cell_width():
-    rows = [(Text('界' * 14), Text('Artista'))]
-    assert column_widths(('Nome', 'Artista / tipo'), rows, 200) == [28, 14]
-    assert sum(column_widths(('Nome', 'Artista / tipo'), rows, 30)) + 4 <= 30
+    rows = [(Text('界' * 14), Text('Artist'))]
+    assert column_widths(('Name', 'Artist / type'), rows, 200) == [28, 13]
+    assert sum(column_widths(('Name', 'Artist / type'), rows, 30)) + 4 <= 30
 
 
 class TableApp(App):
@@ -37,7 +37,7 @@ async def test_resize_ellipsis_and_values_are_preserved():
     app = TableApp()
     async with app.run_test(size=(220, 25)) as pilot:
         table = app.query_one(TrackList)
-        items = [Item(str(i), 'Nome ' + '界' * 100, 'Audio', 'Artist ' * 30, 'Album ' * 30, 225) for i in range(50)]
+        items = [Item(str(i), 'Name ' + '界' * 100, 'Audio', 'Artist ' * 30, 'Album ' * 30, 225) for i in range(50)]
         table.show_items(items, '3')
         table.move_cursor(row=3)
         await pilot.pause()
@@ -60,7 +60,7 @@ async def test_resize_ellipsis_and_values_are_preserved():
 
 async def test_two_column_table_resize():
     class TwoColumns(TrackList):
-        COLUMN_LABELS = ('Nome', 'Artista / tipo')
+        COLUMN_LABELS = ('Name', 'Artist / type')
     class TwoColumnApp(App):
         def compose(self):
             yield TwoColumns()
@@ -72,7 +72,7 @@ async def test_two_column_table_resize():
         await pilot.pause()
         assert len(table.columns) == 2
         assert table.get_cell_at((0, 0)).plain == item.name
-        assert [c.width for c in table.ordered_columns] == [20, 14]
+        assert [c.width for c in table.ordered_columns] == [20, 13]
         await pilot.resize_terminal(40, 25)
         assert table.selected is item
         assert not table.show_horizontal_scrollbar

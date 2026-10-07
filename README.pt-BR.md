@@ -151,6 +151,16 @@ As configurações ficam armazenadas em `$XDG_CONFIG_HOME/jellytui/config.toml` 
 - **Privacidade de senhas:** A senha fornecida no `--setup` é utilizada exclusivamente no handshake de login e nunca é gravada em disco.
 - **Tokens seguros:** O token de sessão é passado ao mpv por meio de IPC Unix em memória, nunca pela linha de comando ou variáveis visíveis via `ps`.
 
+### Idioma
+
+A interface é exibida em inglês por padrão. Para usar português, adicione esta linha ao `config.toml` (ela é preservada quando o `--setup` reescreve o arquivo):
+
+```toml
+language = "pt"
+```
+
+Variantes regionais como `pt-BR` ou `pt_BR` também funcionam. A variável de ambiente `JELLYTUI_LANG` substitui o arquivo em uma única execução (`JELLYTUI_LANG=pt jellytui --demo`). As traduções ficam em [jellytui/i18n.py](jellytui/i18n.py): cada idioma mapeia o texto em inglês para sua tradução, e entradas ausentes usam o inglês.
+
 ## Empacotamento
 
 O repositório fornece receitas prontas para distribuições Linux dentro do diretório `packaging/`:
@@ -198,7 +208,7 @@ pytest -q
 JELLYTUI_LIVE_TEST=1 pytest tests/test_live.py -q
 ```
 
-- Status atual: **59 passed**, **1 skipped** (teste opt-in para servidor real).
+- Status atual: **61 passed**, **1 skipped** (teste opt-in para servidor real).
 - Os testes com mpv utilizam saída de áudio `null` silenciosa sem interferir nos dispositivos de reprodução do sistema.
 
 ## Limitações

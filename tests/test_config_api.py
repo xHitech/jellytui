@@ -1,7 +1,7 @@
 import stat
 import httpx
 import pytest
-from jellytui.config import Config, ConfigError
+from jellytui.config import Config, ConfigError, read_language
 from jellytui.jellyfin import Jellyfin, JellyfinError
 
 
@@ -18,6 +18,32 @@ def test_private_config(tmp_path):
         Config.load(path)
 
 
+def test_setup_keeps_configured_language(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text('language = "pt"\n')
+    Config("http://localhost:8096", "user", "secret").save(path)
+    assert read_language(path) == "pt"
+    assert Config.load(path).token == "secret"
+
+
+def test_language_from_config_or_env(tmp_path, monkeypatch):
+    from jellytui import i18n
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    try:
+        monkeypatch.delenv("JELLYTUI_LANG")
+        i18n.language.cache_clear()
+        assert i18n.t("Library") == "Library"  # No config file: English.
+        (tmp_path / "jellytui").mkdir()
+        (tmp_path / "jellytui" / "config.toml").write_text('language = "pt_BR"\n')
+        i18n.language.cache_clear()
+        assert i18n.t("{path} · {count} items", path="Biblioteca", count=5) == "Biblioteca · 5 itens"
+        monkeypatch.setenv("JELLYTUI_LANG", "en")
+        i18n.language.cache_clear()
+        assert i18n.t("Library") == "Library"  # Environment overrides the file.
+    finally:
+        i18n.language.cache_clear()
+
+
 async def test_authentication_and_safe_error():
     def handler(request):
         assert request.url.path == "/Users/AuthenticateByName"
@@ -26,7 +52,7 @@ async def test_authentication_and_safe_error():
     assert (await api.authenticate("name", "password")).token == "token"
     await api.close()
     api = Jellyfin(Config("http://localhost", "", ""), httpx.MockTransport(lambda r: httpx.Response(401, text="secret")))
-    with pytest.raises(JellyfinError, match="Acesso negado") as exc:
+    with pytest.raises(JellyfinError, match="Access denied") as exc:
         await api.authenticate("name", "secret")
     assert "secret" not in str(exc.value)
     await api.close()
@@ -76,7 +102,7 @@ async def test_no_direct_play_has_clear_error():
     from jellytui.models import Item
     api = Jellyfin(Config("http://localhost", "u", "secret"), httpx.MockTransport(
         lambda r: httpx.Response(200, json={"MediaSources": [{"Id": "a", "SupportsDirectPlay": False}]})))
-    with pytest.raises(JellyfinError, match="Transcodificação está desativada"):
+    with pytest.raises(JellyfinError, match="Transcoding is disabled"):
         await api.stream(Item("a", "A", "Audio"))
     await api.close()
 
@@ -91,7 +117,7 @@ async def test_music_only_folders_and_playlists():
                      {"Id": "video", "Name": "Video", "Type": "Playlist", "MediaType": "Video"}]
         return httpx.Response(200, json={"Items": items, "TotalRecordCount": len(items)})
     api = Jellyfin(Config("http://localhost", "u", "secret"), httpx.MockTransport(handler))
-    assert [i.id for i in await api.browse("Pastas")] == ["music"]
+    assert [i.id for i in await api.browse("Folders")] == ["music"]
     assert [i.id for i in await api.browse("Playlists")] == ["audio"]
     await api.close()
 

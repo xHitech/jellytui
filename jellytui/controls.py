@@ -1,6 +1,7 @@
 """Fonte única dos atalhos da aplicação/tabela, rodapé e ajuda."""
 from dataclasses import dataclass
 from textual.binding import Binding
+from .i18n import t
 
 
 @dataclass(frozen=True)
@@ -19,31 +20,34 @@ class Shortcut:
                        key_display=self.label, priority=self.priority)
 
 
+NAVIGATION, PLAYBACK, LIBRARY, DISPLAY, GENERAL = (
+    t("NAVIGATION"), t("PLAYBACK"), t("LIBRARY"), t("DISPLAY"), t("GENERAL"))
+
 SHORTCUTS = (
-    Shortcut("NAVEGAÇÃO", "up,k", "↑ / k", "cursor_up", "Subir", "table"),
-    Shortcut("NAVEGAÇÃO", "down,j", "↓ / j", "cursor_down", "Descer", "table"),
-    Shortcut("NAVEGAÇÃO", "enter", "Enter", "select_cursor", "Abrir / tocar a partir da seleção", "table"),
-    Shortcut("NAVEGAÇÃO", "backspace", "Backspace", "back", "Voltar um nível"),
-    Shortcut("NAVEGAÇÃO", "pageup", "PageUp", "page_up", "Página anterior", "table"),
-    Shortcut("NAVEGAÇÃO", "pagedown", "PageDown", "page_down", "Próxima página", "table"),
-    Shortcut("NAVEGAÇÃO", "home", "Home", "first_row", "Primeiro item", "table"),
-    Shortcut("NAVEGAÇÃO", "end", "End", "last_row", "Último item", "table"),
-    Shortcut("NAVEGAÇÃO", "tab", "Tab", "focus_next", "Próximo foco"),
-    Shortcut("NAVEGAÇÃO", "shift+tab", "Shift+Tab", "focus_previous", "Foco anterior"),
-    Shortcut("NAVEGAÇÃO", "slash", "/", "search", "Buscar", footer=True),
-    Shortcut("REPRODUÇÃO", "space", "Space", "pause", "Play/Pause", footer=True, priority=True),
-    Shortcut("REPRODUÇÃO", "n", "n", "next_track", "Próxima", footer=True),
-    Shortcut("REPRODUÇÃO", "p", "p", "previous_track", "Anterior", footer=True),
-    Shortcut("REPRODUÇÃO", "left", "←", "seek(-5)", "Voltar 5 segundos", priority=True),
-    Shortcut("REPRODUÇÃO", "right", "→", "seek(5)", "Avançar 5 segundos", priority=True),
-    Shortcut("REPRODUÇÃO", "plus,equal,equals_sign,add", "+ / Numpad +", "volume(5)", "Aumentar volume"),
-    Shortcut("REPRODUÇÃO", "minus,subtract", "- / Numpad -", "volume(-5)", "Diminuir volume"),
-    Shortcut("BIBLIOTECA", "f", "f", "favorite", "Adicionar / remover favorito"),
-    Shortcut("BIBLIOTECA", "Q", "Q", "show_queue", "Mostrar fila local"),
-    Shortcut("EXIBIÇÃO", "l", "l", "toggle_lyrics", "Letra", footer=True),
-    Shortcut("EXIBIÇÃO", "h", "h", "help", "Ajuda", footer=True, priority=True),
-    Shortcut("EXIBIÇÃO", "escape", "Escape", "close_overlay", "Fechar ajuda / busca", priority=True),
-    Shortcut("GERAL", "q", "q", "quit", "Sair", footer=True),
+    Shortcut(NAVIGATION, "up,k", "↑ / k", "cursor_up", t("Up"), "table"),
+    Shortcut(NAVIGATION, "down,j", "↓ / j", "cursor_down", t("Down"), "table"),
+    Shortcut(NAVIGATION, "enter", "Enter", "select_cursor", t("Open / play from selection"), "table"),
+    Shortcut(NAVIGATION, "backspace", "Backspace", "back", t("Go back one level")),
+    Shortcut(NAVIGATION, "pageup", "PageUp", "page_up", t("Previous page"), "table"),
+    Shortcut(NAVIGATION, "pagedown", "PageDown", "page_down", t("Next page"), "table"),
+    Shortcut(NAVIGATION, "home", "Home", "first_row", t("First item"), "table"),
+    Shortcut(NAVIGATION, "end", "End", "last_row", t("Last item"), "table"),
+    Shortcut(NAVIGATION, "tab", "Tab", "focus_next", t("Next focus")),
+    Shortcut(NAVIGATION, "shift+tab", "Shift+Tab", "focus_previous", t("Previous focus")),
+    Shortcut(NAVIGATION, "slash", "/", "search", t("Search"), footer=True),
+    Shortcut(PLAYBACK, "space", "Space", "pause", "Play/Pause", footer=True, priority=True),
+    Shortcut(PLAYBACK, "n", "n", "next_track", t("Next"), footer=True),
+    Shortcut(PLAYBACK, "p", "p", "previous_track", t("Previous"), footer=True),
+    Shortcut(PLAYBACK, "left", "←", "seek(-5)", t("Back 5 seconds"), priority=True),
+    Shortcut(PLAYBACK, "right", "→", "seek(5)", t("Forward 5 seconds"), priority=True),
+    Shortcut(PLAYBACK, "plus,equal,equals_sign,add", "+ / Numpad +", "volume(5)", t("Volume up")),
+    Shortcut(PLAYBACK, "minus,subtract", "- / Numpad -", "volume(-5)", t("Volume down")),
+    Shortcut(LIBRARY, "f", "f", "favorite", t("Add / remove favorite")),
+    Shortcut(LIBRARY, "Q", "Q", "show_queue", t("Show local queue")),
+    Shortcut(DISPLAY, "l", "l", "toggle_lyrics", t("Lyrics"), footer=True),
+    Shortcut(DISPLAY, "h", "h", "help", t("Help"), footer=True, priority=True),
+    Shortcut(DISPLAY, "escape", "Escape", "close_overlay", t("Close help / search"), priority=True),
+    Shortcut(GENERAL, "q", "q", "quit", t("Quit"), footer=True),
 )
 
 

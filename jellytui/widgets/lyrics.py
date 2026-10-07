@@ -1,22 +1,23 @@
 from rich.text import Text
 from textual.widgets import Static
 from ..lyrics import Lyrics
+from ..i18n import t
 
 
 class LyricsPanel(Static):
     def __init__(self):
         super().__init__(id="lyrics", markup=False)
-        self.border_title = "LETRA (LRC)"
+        self.border_title = t("LYRICS (LRC)")
         self.lyrics = Lyrics()
         self.current_index = -1
-        self.message = "Letra não disponível"
+        self.message = t("Lyrics not available")
         self.last_render = None
         self.position = 0
 
-    def set_lyrics(self, lyrics=None, message="Letra não disponível"):
+    def set_lyrics(self, lyrics=None, message=None):
         self.lyrics = lyrics or Lyrics()
         self.current_index = -1
-        self.message = message
+        self.message = message or t("Lyrics not available")
         self.last_render = None
         self.sync(0)
 
@@ -34,7 +35,7 @@ class LyricsPanel(Static):
         self.last_render = signature
         if not self.lyrics.lines:
             if self.lyrics.plain:
-                self.update(Text("Letra sem sincronização\n" + "\n".join(self.lyrics.plain[:5]), style="dim"))
+                self.update(Text(t("Unsynced lyrics") + "\n" + "\n".join(self.lyrics.plain[:5]), style="dim"))
             else:
                 self.update(Text(self.message, style="dim"))
             return

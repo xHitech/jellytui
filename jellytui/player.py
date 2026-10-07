@@ -4,6 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 from contextlib import suppress
+from .i18n import t
 
 
 class PlayerError(Exception):
@@ -39,20 +40,20 @@ class MpvPlayer:
                                 stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
             for _ in range(100):
                 if self.process.returncode is not None:
-                    raise PlayerError("mpv encerrou durante a inicialização.")
+                    raise PlayerError(t("mpv exited during startup."))
                 try:
                     reader, self.writer = await asyncio.open_unix_connection(socket, limit=2**20)
                     break
                 except (FileNotFoundError, ConnectionRefusedError):
                     await asyncio.sleep(0.05)
             else:
-                raise PlayerError("mpv não abriu o socket IPC a tempo.")
+                raise PlayerError(t("mpv did not open the IPC socket in time."))
             self.reader_task = asyncio.create_task(self._read(reader))
             for index, name in enumerate(self.properties):
                 await self.command("observe_property", index, name)
         except (OSError, PlayerError):
             await self.close()
-            raise PlayerError("Não foi possível iniciar mpv/IPC. Verifique se mpv está instalado.") from None
+            raise PlayerError(t("Could not start mpv/IPC. Check that mpv is installed.")) from None
 
     async def _read(self, reader):
         try:
@@ -65,7 +66,7 @@ class MpvPlayer:
                         if message.get("error") == "success":
                             future.set_result(message.get("data"))
                         else:
-                            future.set_exception(PlayerError("mpv não conseguiu executar o comando."))
+                            future.set_exception(PlayerError(t("mpv could not execute the command.")))
                 elif message.get("event") == "property-change":
                     self.properties[message["name"]] = message.get("data")
                 elif message.get("event"):
@@ -75,13 +76,13 @@ class MpvPlayer:
         finally:
             for future in self.pending.values():
                 if not future.done():
-                    future.set_exception(PlayerError("Conexão IPC com mpv encerrada."))
+                    future.set_exception(PlayerError(t("IPC connection to mpv closed.")))
             if not self.closed:
                 await self.events.put({"event": "ipc-disconnected"})
 
     async def command(self, *args):
         if not self.writer or self.writer.is_closing():
-            raise PlayerError("mpv não está conectado.")
+            raise PlayerError(t("mpv is not connected."))
         self.sequence += 1
         request_id = self.sequence
         future = asyncio.get_running_loop().create_future()
@@ -91,7 +92,7 @@ class MpvPlayer:
             await self.writer.drain()
             return await asyncio.wait_for(future, 5)
         except (OSError, asyncio.TimeoutError):
-            raise PlayerError("mpv não respondeu ao comando IPC.") from None
+            raise PlayerError(t("mpv did not respond to the IPC command.")) from None
         finally:
             self.pending.pop(request_id, None)
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from .i18n import t
 
 
 def _extract_artist(data: dict) -> str:
@@ -50,7 +51,7 @@ class Item:
             elif isinstance(data.get("ParentItem"), dict) and data["ParentItem"].get("Type") == "MusicArtist":
                 artist = data["ParentItem"].get("Name", "")
         return cls(
-            data["Id"], data.get("Name", "Sem título"), data.get("Type", "Folder"),
+            data["Id"], data.get("Name", t("Untitled")), data.get("Type", "Folder"),
             artist,
             data.get("Album", ""), (data.get("RunTimeTicks") or 0) / 10_000_000,
             data.get("UserData", {}).get("IsFavorite", False), data,
@@ -77,14 +78,14 @@ class Queue:
 
     def replace(self, items: list[Item], index: int):
         if not 0 <= index < len(items) or not all(i.is_track for i in items):
-            raise ValueError("Fila inválida")
+            raise ValueError("Invalid queue")
         self.items = list(items)
         self.index = index
 
     def play_from(self, items: list[Item], row: int):
         """A fila é o sufixo musical da lista visível, preservando repetições."""
         if not 0 <= row < len(items) or not items[row].is_track:
-            raise ValueError("Selecione uma faixa")
+            raise ValueError("Select a track")
         self.replace([item for item in items[row:] if item.is_track], 0)
 
     def move(self, offset: int) -> Item | None:

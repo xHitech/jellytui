@@ -22,9 +22,9 @@ async def test_live_library_and_tui_playback():
     async with app.run_test(size=(120, 35)) as pilot:
         await app.workers.wait_for_complete()
         table = app.query_one(TrackList)
-        assert table.items[0].name == "Artistas"
+        assert table.items[0].id == "Artists"
         assert not app.query("#browser")
-        for category in ("Pastas", "Playlists", "Favoritos"):
+        for category in ("Folders", "Playlists", "Favorites"):
             await api.browse(category)
         table.move_cursor(row=1)
         await pilot.press("enter")
@@ -60,7 +60,7 @@ async def test_live_library_and_tui_playback():
         await app.workers.wait_for_complete()
         panel = app.main_screen.query_one(LyricsPanel)
         async with asyncio.timeout(20):
-            while panel.message == "Carregando letra…":
+            while panel.message == "Loading lyrics…":
                 await pilot.pause(0.1)
         assert app.playing_item.id == table.selected.id
         assert len(panel.lyrics.lines) > 1, panel.message
